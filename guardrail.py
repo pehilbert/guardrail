@@ -1,3 +1,4 @@
+from os import path, mkdir
 from sys import argv
 import debugger as debug
 
@@ -12,7 +13,7 @@ Arguments:
 
 Options:
   -o, --output <path>   Specify output file name (default: test_<file>.py)
-  -d, --dir <path>      Specify output directory (default: test/)
+  -d, --dir <path>      Specify output directory (default: test)
   -f, --framework <name>  Choose a testing framework (unittest, pytest) (default: pytest)
   -h, --help           Show this help message and exit
 
@@ -30,8 +31,6 @@ DEFAULT_OUTPUT_FILE_PREFIX = "test_"
 DEFAULT_FRAMEWORK = "pytest"
 
 def main():
-    pass
-
     # Parse command line arguments
     argc = len(argv)
 
@@ -39,6 +38,7 @@ def main():
         print(EXPECTED_USAGE)
         return
     
+    # Handle file name
     file_name = argv[1]
 
     # Verify file extension
@@ -47,14 +47,20 @@ def main():
     if not file_extension in ACCEPTED_FILE_EXTENSIONS:
         print("File must have one of the following file extensions:", ", ".join(["." + e for e in ACCEPTED_FILE_EXTENSIONS]))
         return
+    
+    # Ensure file exists
+    if not path.isfile(file_name):
+        print("File does not exist:", file_name)
+        return
 
+    # Handle function name
     function_name = argv[2]
 
+    # Handle options
     output_dir = DEFAULT_OUTPUT_DIR
     output_file = DEFAULT_OUTPUT_FILE_PREFIX + file_name
     framework = DEFAULT_FRAMEWORK
 
-    # Parse options
     index = 3
 
     while index < argc:
@@ -99,21 +105,30 @@ def main():
     debug.check_value("output_dir", output_dir)
     debug.check_value("framework", framework)
 
-    # Ensure file exists
-
-    # Look for function in file
-
+    # Get function source code
+    function_src = get_function_src(file_name, function_name)
+    
     # Generate test script (function: generate_tests)
+    test_src = generate_test_src(function_src, framework)
 
     # Write returned source code to file
+    if not path.isdir(output_dir):
+        mkdir(output_dir)
 
-def generate_tests(function_src, framework):
-    pass
+    with open(output_dir + "/" + output_file, "w") as output:
+        output.write(test_src)
 
-    # Call LLM to analyze function and generate tests in framework
+def generate_test_src(function_src, framework):
+    # TODO: Call LLM to analyze function and generate tests in framework
 
     # return test source code
+    return "Test for source:\n" + function_src + "\nin " + framework
 
+def get_function_src(file_name, function_name):
+    # TODO: Find the function source code in the file
+
+    # Return function
+    return "Some python code!"
 
 if __name__ == "__main__":
     main()
