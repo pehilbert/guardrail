@@ -3,7 +3,7 @@ from sys import argv
 from dotenv import load_dotenv
 import ast
 import debugger as debug
-import openai
+import llm_core
 
 load_dotenv()
 
@@ -17,7 +17,7 @@ Arguments:
   function        The name of the function to generate tests for
 
 Options:
-  -o, --output <path>   Specify output file name (default: test_<file>.py)
+  -o, --output <path>   Specify output file name (default: test_<function>.py)
   -d, --dir <path>      Specify output directory (default: test)
   -f, --framework <name>  Choose a testing framework (unittest, pytest) (default: pytest)
   -h, --help           Show this help message and exit
@@ -26,26 +26,6 @@ Examples:
   guardrail foo.py bar
   guardrail foo.py bar --framework unittest
   guardrail foo.py bar -o tests/test_bar.py -f pytest
-"""
-
-OPENAI_MODEL = "gpt-4o-mini"
-TESTGEN_INSTRUCTIONS = """
-Given the source code for a function, generate a full, working test script for that
-function using the framework {framework}. Generate only the source code, ready to run. Do
-not include anything else, not even triple tickmarks for markdown. The user will be responsible for
-importing their function, so do not include an import statement for it.
-
-The generated output must follow the following format:
-
-# ============================ IMPORTS ============================
-<import the test framework>
-# TODO: import function to test
-
-# ============================ TEST CASES ============================
-# Unit tests for function: <function_name>
-# File tested: <file_name>
-
-<code for test cases goes here>
 """
 
 ACCEPTED_FILE_EXTENSIONS = ["py"]
@@ -134,7 +114,7 @@ def main():
     function_src = get_function_src(file_name, function_name)
     
     # Generate test script (function: generate_tests)
-    test_src = generate_test_src(function_src, framework)
+    test_src = llm_core.generate_test_src(function_src, framework)
 
     # Write returned source code to file
     if not path.isdir(output_dir):
@@ -150,30 +130,6 @@ def main():
         output.write("\"\"\"\n\n")
 
         output.write(test_src)
-
-def generate_test_src(function_src, framework):
-    openai_result = openai.responses.create(
-        model=OPENAI_MODEL,
-        instructions=TESTGEN_INSTRUCTIONS.format(framework=framework),
-        input=function_src
-    )
-
-    if openai_result.output and openai_result.output[0].content:
-        print()
-        debug.check_value("LLM Call Result", openai_result)
-        print()
-        debug.check_value("output", openai_result.output)
-        print()
-        debug.check_value("first object in list", openai_result.output[0])
-        print()
-        debug.check_value("content of first result", openai_result.output[0].content)
-        print()
-        debug.check_value("Final text to be extracted", openai_result.output[0].content[0].text)
-        print()
-
-        return openai_result.output[0].content[0].text
-    else:
-        raise ValueError("Unexpected response structure or empty content")
 
 def get_function_src(file_name, function_name):
     with open(file_name, "r", encoding="utf-8") as f:
